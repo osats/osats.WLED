@@ -1,188 +1,117 @@
 using System;
-using System.Collections.Generic;
+using System.Diagnostics;
+using System.Linq;
 using System.Net;
 using System.Net.Sockets;
 
 namespace osats.WLED
 {
-    public class WLEDHelper
+    public sealed class WLEDHelper : IDisposable
     {
-        private string host;
-        private int port;
-        public int LedAmount { get; set; }
-        public int Offset { get; set; }
-        public bool Mirror { get; set; }
-        public bool Center { get; set; }
+        private readonly UdpClient client = new UdpClient();
+        private readonly Stopwatch clock = Stopwatch.StartNew();
+        private readonly Func<long> nowMilliseconds;
+        private bool previousGreen;
+        private long greenUntil, testUntil, effectStart, lastSend = -10000, retryAfter;
+        private string testKey, activeKey;
+        private byte[] previousFrame;
+        public string Status { get; private set; } = "À espera de telemetria";
 
-        private UdpClient LedClient { get; set; }
-
-        // estado green flag
-        private DateTime greenFlagStart = DateTime.MinValue;
-        private bool greenFlagActive = false;
-
-        // estado piscar
-        private DateTime lastBlink = DateTime.MinValue;
-        private bool blinkState = false;
-
-        public WLEDHelper(string host, int port)
+        public WLEDHelper(Func<long> nowMilliseconds = null)
         {
-            this.host = host;
-            this.port = port;
-            LedClient = new UdpClient();
+            this.nowMilliseconds = nowMilliseconds ?? (() => clock.ElapsedMilliseconds);
         }
+
+        public void Test(string key, int durationMs)
+        {
+            testKey = key;
+            testUntil = nowMilliseconds() + durationMs;
+            lastSend = -10000;
+        }
+
+        public void StopTest() { testKey = null; lastSend = -10000; }
 
         public void Update(WLEDSettings s, bool gameRunning, double rpm, double maxRpm,
             bool shouldShift, bool pitLimiter, bool yellowFlag, bool blueFlag, bool greenFlag, bool gameInMenu, double speed)
         {
-            (int, int, int) color;
-            bool doBlink = false;
-            double blinkInterval = 500;
-
-            // green flag — activa timer
-            if (greenFlag && !greenFlagActive)
-            {
-                greenFlagActive = true;
-                greenFlagStart = DateTime.Now;
+            long now = nowMilliseconds();
+            bool driving = gameRunning && !gameInMenu;
+            if (driving && greenFlag && !previousGreen) greenUntil = now + s.GreenDurationMs;
+            previousGreen = driving && greenFlag;
+            if (!driving) greenUntil = 0;
+            bool testing = testKey != null && now < testUntil;
+            EffectOptions effect;
+            if (testing) effect = s.Effects.FirstOrDefault(x => x.Key == testKey);
+            else {
+                testKey = null;
+                effect = s.Effects.Where(x => x.Enabled && (
+                    x.Key == (driving ? "driving" : "default") ||
+                    driving && (x.Key == "pit" && pitLimiter || x.Key == "yellow" && yellowFlag ||
+                        x.Key == "blue" && blueFlag || x.Key == "green" && now < greenUntil ||
+                        x.Key == "shift" && shouldShift || x.Key == "rpm" && maxRpm > 0)))
+                    .OrderByDescending(x => x.Priority).ThenBy(x => x.Key, StringComparer.Ordinal).FirstOrDefault();
             }
-            bool greenFlagRunning = greenFlagActive &&
-                (DateTime.Now - greenFlagStart).TotalSeconds < 5;
-            if (!greenFlagRunning) greenFlagActive = false;
-
-            // --- prioridade ---
-            if (!gameRunning || speed < 10)
-            {
-                if (!s.defaultEnabled) return;
-                color = (s.defaultColorR, s.defaultColorG, s.defaultColorB);
-                doBlink = false;
+            string key = effect == null ? "off" : effect.Key;
+            string stateKey = (testing ? "test:" : "live:") + key;
+            if (stateKey != activeKey) { activeKey = stateKey; effectStart = now; lastSend = -10000; }
+            if (now < retryAfter || now - lastSend < 1000.0 / s.FramesPerSecond) return;
+            bool on = effect != null && (!effect.Blink || (now - effectStart) / effect.IntervalMs % 2 == 0);
+            double fraction = testing ? 0.75 : RpmFraction(rpm, maxRpm, s.RpmStartPercent, s.RpmEndPercent);
+            byte[] frame = BuildFrame(s, effect, on, fraction);
+            // The one-second realtime timeout needs a periodic keepalive.
+            if (previousFrame != null && frame.SequenceEqual(previousFrame) && now - lastSend < 500) return;
+            try {
+                client.Send(frame, frame.Length, new IPEndPoint(IPAddress.Parse(s.stripUrl), s.stripPort));
+                lastSend = now;
+                previousFrame = frame;
+                Status = (testing ? "Teste: " : "Ativo: ") + (effect == null ? "Desligado" : effect.Name) + " · UDP enviado (sem confirmação)";
             }
-            else if (pitLimiter && s.pitLimiterEnabled)
-            {
-                color = (s.pitLimiterColorR, s.pitLimiterColorG, s.pitLimiterColorB);
-                doBlink = true;
-                blinkInterval = 200;
-            }
-            else if (yellowFlag && s.yellowFlagEnabled)
-            {
-                color = (s.yellowFlagColorR, s.yellowFlagColorG, s.yellowFlagColorB);
-                doBlink = true;
-                blinkInterval = 600;
-            }
-            else if (blueFlag && s.blueFlagEnabled)
-            {
-                color = (s.blueFlagColorR, s.blueFlagColorG, s.blueFlagColorB);
-                doBlink = true;
-                blinkInterval = 600;
-            }
-            else if (greenFlagRunning && s.greenFlagEnabled)
-            {
-                color = (s.greenFlagColorR, s.greenFlagColorG, s.greenFlagColorB);
-                doBlink = true;
-                blinkInterval = 150;
-            }
-            else if (s.rpmEnabled && maxRpm > 0)
-            {
-                ShowRpm(s, rpm, maxRpm, shouldShift);
-                return;
-            }
-            else if (s.drivingEnabled)
-            {
-                color = (s.drivingColorR, s.drivingColorG, s.drivingColorB);
-                doBlink = false;
-            }
-            else return;
-
-            // piscar
-            if (doBlink)
-            {
-                if ((DateTime.Now - lastBlink).TotalMilliseconds > blinkInterval)
-                {
-                    blinkState = !blinkState;
-                    lastBlink = DateTime.Now;
-                }
-                if (!blinkState) color = (0, 0, 0);
-            }
-
-            SendSolidColor(color);
+            catch (SocketException ex) { Failed(now, ex); }
+            catch (ArgumentException ex) { Failed(now, ex); }
         }
 
-        private void ShowRpm(WLEDSettings s, double rpm, double maxRpm, bool shouldShift)
+        private void Failed(long now, Exception ex)
         {
-            if (maxRpm <= 0) return;
-            int scaledAmount = (int)(rpm / (maxRpm / LedAmount));
-            scaledAmount = Math.Max(0, Math.Min(scaledAmount, LedAmount));
-
-            int left = 0 + Offset;
-            int right = LedAmount + Offset;
-
-            (int, int, int) riseColor = (s.rpmColorR, s.rpmColorG, s.rpmColorB);
-            (int, int, int) shiftColor = (s.rpmShiftColorR, s.rpmShiftColorG, s.rpmShiftColorB);
-            (int, int, int) offColor = (0, 0, 0);
-
-            (int, int, int) innerColor = Mirror ? offColor : riseColor;
-            (int, int, int) outerColor = Mirror ? riseColor : offColor;
-
-            var data = new List<byte>();
-            data.Add(0x01);
-            data.Add(0x01);
-
-            if (shouldShift)
-            {
-                for (int i = left; i < right; i++)
-                {
-                    data.Add(BitConverter.GetBytes(i)[0]);
-                    data.AddRange(ColorToBytes(shiftColor));
-                }
-            }
-            else
-            {
-                if (Center)
-                {
-                    var center = right / 2;
-                    int leftBorder = center - scaledAmount / 2;
-                    int rightBorder = center + scaledAmount / 2;
-                    if (Mirror) { leftBorder = left + scaledAmount / 2; rightBorder = right - scaledAmount / 2; }
-                    for (int i = left; i < leftBorder; i++) { data.Add(BitConverter.GetBytes(i)[0]); data.AddRange(ColorToBytes(outerColor)); }
-                    for (int i = leftBorder; i < rightBorder; i++) { data.Add(BitConverter.GetBytes(i)[0]); data.AddRange(ColorToBytes(innerColor)); }
-                    for (int i = rightBorder; i < right; i++) { data.Add(BitConverter.GetBytes(i)[0]); data.AddRange(ColorToBytes(outerColor)); }
-                }
-                else
-                {
-                    var border = left + scaledAmount;
-                    if (Mirror) border = right - scaledAmount;
-                    for (int i = left; i < border; i++) { data.Add(BitConverter.GetBytes(i)[0]); data.AddRange(ColorToBytes(innerColor)); }
-                    for (int i = border; i < right; i++) { data.Add(BitConverter.GetBytes(i)[0]); data.AddRange(ColorToBytes(outerColor)); }
-                }
-            }
-
-            var arr = data.ToArray();
-            var ep = new IPEndPoint(IPAddress.Parse(host), port);
-            LedClient.Send(arr, arr.Length, ep);
+            retryAfter = now + 2000;
+            Status = "Erro UDP: " + ex.Message;
+            SimHub.Logging.Current.Warn("WLED: " + ex.Message);
         }
 
-        private void SendSolidColor((int, int, int) color)
+        public static double RpmFraction(double rpm, double maxRpm, double start, double end)
         {
-            int left = Offset;
-            int right = LedAmount + Offset;
-            var data = new List<byte>();
-            data.Add(0x01);
-            data.Add(0x01);
-            for (int i = left; i < right; i++)
-            {
-                data.Add(BitConverter.GetBytes(i)[0]);
-                data.AddRange(ColorToBytes(color));
-            }
-            var arr = data.ToArray();
-            var ep = new IPEndPoint(IPAddress.Parse(host), port);
-            LedClient.Send(arr, arr.Length, ep);
+            if (maxRpm <= 0 || double.IsNaN(rpm) || double.IsInfinity(rpm) || double.IsNaN(maxRpm) || double.IsInfinity(maxRpm)) return 0;
+            return Math.Max(0, Math.Min(1, (100 * rpm / maxRpm - start) / (end - start)));
         }
 
-        private List<byte> ColorToBytes((int, int, int) color)
+        public static byte[] BuildFrame(WLEDSettings s, EffectOptions effect, bool on, double fraction)
         {
-            return new List<byte> {
-                BitConverter.GetBytes(color.Item1)[0],
-                BitConverter.GetBytes(color.Item2)[0],
-                BitConverter.GetBytes(color.Item3)[0]
-            };
+            var frame = new byte[2 + s.ledAmount * 4];
+            frame[0] = 1; frame[1] = 1;
+            int lit = (int)Math.Round(Math.Max(0, Math.Min(1, fraction)) * s.ledAmount);
+            int start = s.center ? (s.ledAmount - lit) / 2 : 0;
+            double brightness = effect == null ? 0 : s.Brightness * effect.Brightness / 10000.0;
+            for (int i = 0; i < s.ledAmount; i++) {
+                bool illuminated = on;
+                if (effect != null && effect.Key == "rpm") {
+                    if (s.center && s.mirror) {
+                        int dark = s.ledAmount - lit;
+                        int darkStart = (s.ledAmount - dark) / 2;
+                        illuminated &= i < darkStart || i >= darkStart + dark;
+                    }
+                    else if (s.center) illuminated &= i >= start && i < start + lit;
+                    else illuminated &= s.mirror ? i >= s.ledAmount - lit : i < lit;
+                }
+                int index = 2 + i * 4;
+                frame[index] = (byte)(s.offset + i);
+                if (illuminated && effect != null) {
+                    frame[index + 1] = (byte)Math.Round(effect.R * brightness);
+                    frame[index + 2] = (byte)Math.Round(effect.G * brightness);
+                    frame[index + 3] = (byte)Math.Round(effect.B * brightness);
+                }
+            }
+            return frame;
         }
+
+        public void Dispose() { client.Dispose(); }
     }
 }
