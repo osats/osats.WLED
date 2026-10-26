@@ -50,7 +50,7 @@ Existing effect colours and enabled flags migrate automatically. Version 2 intro
 - The colour preview is local; use a timed test to preview on the strip.
 - Unchanged frames refresh every 500 ms to maintain the one-second realtime timeout. Frame rate is configurable from 1–60 FPS.
 - Closing SimHub stops transmission; subsequent output follows the device's realtime timeout settings.
-- Physical WLED and in-game validation remain pending.
+- User confirmed the plugin is working on 2026-10-26.
 
 ## Build and package
 

@@ -11,4 +11,4 @@
 - Bound UDP frequency, keepalive and recovery from send errors.
 - Build/package script and deterministic regression tests with loopback UDP integration.
 
-Physical WLED and in-game validation remain pending. Current UDP format supports LED indices 0–255.
+User confirmed the plugin is working on 2026-10-26. Current UDP format supports LED indices 0–255.
