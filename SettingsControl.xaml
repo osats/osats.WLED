@@ -1,145 +1,25 @@
 <UserControl x:Class="osats.WLED.SettingsControl"
-             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
-             xmlns:local="clr-namespace:osats.WLED"
-             xmlns:styles="clr-namespace:SimHub.Plugins.Styles;assembly=SimHub.Plugins"
-             mc:Ignorable="d"
-             d:DesignHeight="800" d:DesignWidth="600">
-    <ScrollViewer VerticalScrollBarVisibility="Auto">
-        <StackPanel Margin="10">
-
-            <!-- LIGAÇÃO -->
-            <styles:SHSection Title="Ligação">
-                <Grid>
-                    <Grid.RowDefinitions>
-                        <RowDefinition Height="Auto"/>
-                        <RowDefinition Height="Auto"/>
-                        <RowDefinition Height="Auto"/>
-                        <RowDefinition Height="Auto"/>
-                        <RowDefinition Height="Auto"/>
-                        <RowDefinition Height="Auto"/>
-                        <RowDefinition Height="Auto"/>
-                    </Grid.RowDefinitions>
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="160"/>
-                        <ColumnDefinition Width="*"/>
-                    </Grid.ColumnDefinitions>
-
-                    <TextBlock Grid.Row="0" Grid.Column="0" Text="Host (IP)" VerticalAlignment="Center" Margin="0,4"/>
-                    <TextBox x:Name="UrlInput" Grid.Row="0" Grid.Column="1" Margin="0,4" Width="180" HorizontalAlignment="Left"/>
-
-                    <TextBlock Grid.Row="1" Grid.Column="0" Text="Porto" VerticalAlignment="Center" Margin="0,4"/>
-                    <TextBox x:Name="PortInput" Grid.Row="1" Grid.Column="1" Margin="0,4" Width="80" HorizontalAlignment="Left"/>
-
-                    <TextBlock Grid.Row="2" Grid.Column="0" Text="Nº de LEDs" VerticalAlignment="Center" Margin="0,4"/>
-                    <TextBox x:Name="LedAmount" Grid.Row="2" Grid.Column="1" Margin="0,4" Width="80" HorizontalAlignment="Left"/>
-
-                    <TextBlock Grid.Row="3" Grid.Column="0" Text="Offset" VerticalAlignment="Center" Margin="0,4"/>
-                    <TextBox x:Name="LedOffset" Grid.Row="3" Grid.Column="1" Margin="0,4" Width="80" HorizontalAlignment="Left"/>
-
-                    <TextBlock Grid.Row="4" Grid.Column="0" Text="Mirror" VerticalAlignment="Center" Margin="0,4"/>
-                    <CheckBox x:Name="Mirror" Grid.Row="4" Grid.Column="1" Margin="0,4" VerticalAlignment="Center"/>
-
-                    <TextBlock Grid.Row="5" Grid.Column="0" Text="Center" VerticalAlignment="Center" Margin="0,4"/>
-                    <CheckBox x:Name="Center" Grid.Row="5" Grid.Column="1" Margin="0,4" VerticalAlignment="Center"/>
-
-                    <styles:SHButtonPrimary Grid.Row="6" Grid.Column="1" Click="Apply" Margin="0,8" HorizontalAlignment="Left">Aplicar</styles:SHButtonPrimary>
-                </Grid>
-            </styles:SHSection>
-
-            <!-- Effects -->
-            <styles:SHSection Title="Effects">
-                <Grid>
-                    <Grid.RowDefinitions>
-                        <RowDefinition Height="Auto"/>
-                        <RowDefinition Height="Auto"/>
-                        <RowDefinition Height="Auto"/>
-                        <RowDefinition Height="Auto"/>
-                        <RowDefinition Height="Auto"/>
-                        <RowDefinition Height="Auto"/>
-                        <RowDefinition Height="Auto"/>
-                        <RowDefinition Height="Auto"/>
-                    </Grid.RowDefinitions>
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="160"/>
-                        <ColumnDefinition Width="50"/>
-                        <ColumnDefinition Width="60"/>
-                        <ColumnDefinition Width="60"/>
-                        <ColumnDefinition Width="60"/>
-                        <ColumnDefinition Width="60"/>
-                    </Grid.ColumnDefinitions>
-
-                    <!-- cabeçalho -->
-                    <TextBlock Grid.Row="0" Grid.Column="0" Text="Effect" FontWeight="Bold" Margin="0,4"/>
-                    <TextBlock Grid.Row="0" Grid.Column="1" Text="" FontWeight="Bold" Margin="0,4"/>
-                    <TextBlock Grid.Row="0" Grid.Column="2" Text="R" FontWeight="Bold" Margin="0,4"/>
-                    <TextBlock Grid.Row="0" Grid.Column="3" Text="G" FontWeight="Bold" Margin="0,4"/>
-                    <TextBlock Grid.Row="0" Grid.Column="4" Text="B" FontWeight="Bold" Margin="0,4"/>
-                    <TextBlock Grid.Row="0" Grid.Column="5" Text="Preview" FontWeight="Bold" Margin="0,4"/>
-
-                    <!-- Default -->
-                    <TextBlock Grid.Row="1" Grid.Column="0" Text="Default (menus)" VerticalAlignment="Center" Margin="0,4"/>
-                    <CheckBox x:Name="DefaultEnabled" Grid.Row="1" Grid.Column="1" VerticalAlignment="Center" Margin="0,4"/>
-                    <TextBox x:Name="DefaultR" Grid.Row="1" Grid.Column="2" Width="50" Margin="2,4" TextChanged="UpdatePreview_Default"/>
-                    <TextBox x:Name="DefaultG" Grid.Row="1" Grid.Column="3" Width="50" Margin="2,4" TextChanged="UpdatePreview_Default"/>
-                    <TextBox x:Name="DefaultB" Grid.Row="1" Grid.Column="4" Width="50" Margin="2,4" TextChanged="UpdatePreview_Default"/>
-                    <Border x:Name="PreviewDefault" Grid.Row="1" Grid.Column="5" Width="40" Height="20" CornerRadius="4" Margin="4"/>
-
-                    <!-- Running -->
-                    <TextBlock Grid.Row="2" Grid.Column="0" Text="Running" VerticalAlignment="Center" Margin="0,4"/>
-                    <CheckBox x:Name="DrivingEnabled" Grid.Row="2" Grid.Column="1" VerticalAlignment="Center" Margin="0,4"/>
-                    <TextBox x:Name="DrivingR" Grid.Row="2" Grid.Column="2" Width="50" Margin="2,4" TextChanged="UpdatePreview_Driving"/>
-                    <TextBox x:Name="DrivingG" Grid.Row="2" Grid.Column="3" Width="50" Margin="2,4" TextChanged="UpdatePreview_Driving"/>
-                    <TextBox x:Name="DrivingB" Grid.Row="2" Grid.Column="4" Width="50" Margin="2,4" TextChanged="UpdatePreview_Driving"/>
-                    <Border x:Name="PreviewDriving" Grid.Row="2" Grid.Column="5" Width="40" Height="20" CornerRadius="4" Margin="4"/>
-
-                    <!-- RPM -->
-                    <TextBlock Grid.Row="3" Grid.Column="0" Text="RPM" VerticalAlignment="Center" Margin="0,4"/>
-                    <CheckBox x:Name="RpmEnabled" Grid.Row="3" Grid.Column="1" VerticalAlignment="Center" Margin="0,4"/>
-                    <TextBox x:Name="RpmR" Grid.Row="3" Grid.Column="2" Width="50" Margin="2,4" TextChanged="UpdatePreview_Rpm"/>
-                    <TextBox x:Name="RpmG" Grid.Row="3" Grid.Column="3" Width="50" Margin="2,4" TextChanged="UpdatePreview_Rpm"/>
-                    <TextBox x:Name="RpmB" Grid.Row="3" Grid.Column="4" Width="50" Margin="2,4" TextChanged="UpdatePreview_Rpm"/>
-                    <Border x:Name="PreviewRpm" Grid.Row="3" Grid.Column="5" Width="40" Height="20" CornerRadius="4" Margin="4"/>
-
-                    <!-- Green flag -->
-                    <TextBlock Grid.Row="4" Grid.Column="0" Text="Green flag (5s)" VerticalAlignment="Center" Margin="0,4"/>
-                    <CheckBox x:Name="GreenFlagEnabled" Grid.Row="4" Grid.Column="1" VerticalAlignment="Center" Margin="0,4"/>
-                    <TextBox x:Name="GreenFlagR" Grid.Row="4" Grid.Column="2" Width="50" Margin="2,4" TextChanged="UpdatePreview_GreenFlag"/>
-                    <TextBox x:Name="GreenFlagG" Grid.Row="4" Grid.Column="3" Width="50" Margin="2,4" TextChanged="UpdatePreview_GreenFlag"/>
-                    <TextBox x:Name="GreenFlagB" Grid.Row="4" Grid.Column="4" Width="50" Margin="2,4" TextChanged="UpdatePreview_GreenFlag"/>
-                    <Border x:Name="PreviewGreenFlag" Grid.Row="4" Grid.Column="5" Width="40" Height="20" CornerRadius="4" Margin="4"/>
-
-                    <!-- Yellow Flag -->
-                    <TextBlock Grid.Row="5" Grid.Column="0" Text="Yellow Flag" VerticalAlignment="Center" Margin="0,4"/>
-                    <CheckBox x:Name="YellowFlagEnabled" Grid.Row="5" Grid.Column="1" VerticalAlignment="Center" Margin="0,4"/>
-                    <TextBox x:Name="YellowFlagR" Grid.Row="5" Grid.Column="2" Width="50" Margin="2,4" TextChanged="UpdatePreview_YellowFlag"/>
-                    <TextBox x:Name="YellowFlagG" Grid.Row="5" Grid.Column="3" Width="50" Margin="2,4" TextChanged="UpdatePreview_YellowFlag"/>
-                    <TextBox x:Name="YellowFlagB" Grid.Row="5" Grid.Column="4" Width="50" Margin="2,4" TextChanged="UpdatePreview_YellowFlag"/>
-                    <Border x:Name="PreviewYellowFlag" Grid.Row="5" Grid.Column="5" Width="40" Height="20" CornerRadius="4" Margin="4"/>
-
-                    <!-- Blue Flag -->
-                    <TextBlock Grid.Row="6" Grid.Column="0" Text="Blue Flag" VerticalAlignment="Center" Margin="0,4"/>
-                    <CheckBox x:Name="BlueFlagEnabled" Grid.Row="6" Grid.Column="1" VerticalAlignment="Center" Margin="0,4"/>
-                    <TextBox x:Name="BlueFlagR" Grid.Row="6" Grid.Column="2" Width="50" Margin="2,4" TextChanged="UpdatePreview_BlueFlag"/>
-                    <TextBox x:Name="BlueFlagG" Grid.Row="6" Grid.Column="3" Width="50" Margin="2,4" TextChanged="UpdatePreview_BlueFlag"/>
-                    <TextBox x:Name="BlueFlagB" Grid.Row="6" Grid.Column="4" Width="50" Margin="2,4" TextChanged="UpdatePreview_BlueFlag"/>
-                    <Border x:Name="PreviewBlueFlag" Grid.Row="6" Grid.Column="5" Width="40" Height="20" CornerRadius="4" Margin="4"/>
-
-                    <!-- Pit limiter -->
-                    <TextBlock Grid.Row="7" Grid.Column="0" Text="Pit limiter" VerticalAlignment="Center" Margin="0,4"/>
-                    <CheckBox x:Name="PitLimiterEnabled" Grid.Row="7" Grid.Column="1" VerticalAlignment="Center" Margin="0,4"/>
-                    <TextBox x:Name="PitLimiterR" Grid.Row="7" Grid.Column="2" Width="50" Margin="2,4" TextChanged="UpdatePreview_PitLimiter"/>
-                    <TextBox x:Name="PitLimiterG" Grid.Row="7" Grid.Column="3" Width="50" Margin="2,4" TextChanged="UpdatePreview_PitLimiter"/>
-                    <TextBox x:Name="PitLimiterB" Grid.Row="7" Grid.Column="4" Width="50" Margin="2,4" TextChanged="UpdatePreview_PitLimiter"/>
-                    <Border x:Name="PreviewPitLimiter" Grid.Row="7" Grid.Column="5" Width="40" Height="20" CornerRadius="4" Margin="4"/>
-
-                </Grid>
-            </styles:SHSection>
-
-            <styles:SHButtonPrimary Click="Apply" Margin="0,10" HorizontalAlignment="Right">Aplicar tudo</styles:SHButtonPrimary>
-
-        </StackPanel>
-    </ScrollViewer>
+ xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+ xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+ <Grid Margin="16">
+  <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+  <StackPanel Margin="0,0,0,12">
+   <TextBlock Text="WLED · Studio" FontSize="26" FontWeight="SemiBold"/>
+   <TextBlock Text="Cores, movimento e avisos de telemetria" Opacity="0.7" Margin="0,4"/>
+  </StackPanel>
+  <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+   <StackPanel x:Name="Editor"/>
+  </ScrollViewer>
+  <StackPanel Grid.Row="2" Margin="0,12,0,0">
+   <WrapPanel>
+    <Button Content="Aplicar e guardar" Click="Apply" Padding="16,8" Margin="0,0,8,8"/>
+    <Button Content="Parar teste" Click="StopTest" Padding="12,8" Margin="0,0,8,8"/>
+    <Button Content="Importar perfil" Click="Import" Padding="12,8" Margin="0,0,8,8"/>
+    <Button Content="Exportar perfil" Click="Export" Padding="12,8" Margin="0,0,8,8"/>
+    <Button Content="Repor predefinições" Click="Reset" Padding="12,8" Margin="0,0,8,8"/>
+   </WrapPanel>
+   <TextBlock x:Name="Feedback" TextWrapping="Wrap" Margin="0,4"/>
+   <TextBlock x:Name="LiveStatus" TextWrapping="Wrap" Opacity="0.7" Margin="0,4"/>
+  </StackPanel>
+ </Grid>
 </UserControl>

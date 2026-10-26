@@ -1,0 +1,12 @@
+<Project ToolsVersion="Current" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType><TargetFrameworkVersion>v4.8</TargetFrameworkVersion>
+    <OutputPath>bin\</OutputPath><AssemblyName>WLED.Tests</AssemblyName><LangVersion>latest</LangVersion>
+  </PropertyGroup>
+  <ItemGroup>
+    <Reference Include="System"/><Reference Include="System.Core"/><Reference Include="System.Xml"/>
+    <Compile Include="..\WLEDHelper.cs"/><Compile Include="..\WLEDSettings.cs"/>
+    <Compile Include="..\RevampSettings.cs"/><Compile Include="Program.cs"/>
+  </ItemGroup>
+  <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets"/>
+</Project>

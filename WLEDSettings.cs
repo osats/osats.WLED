@@ -1,9 +1,9 @@
 namespace osats.WLED
 {
-    public class WLEDSettings
+    public partial class WLEDSettings
     {
         // Ligação
-        public string stripUrl = "192.168.1.72";
+        public string stripUrl = "192.168.1.100";
         public int stripPort = 19446;
         public int ledAmount = 29;
         public int offset = 0;
